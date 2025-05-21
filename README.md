@@ -24,7 +24,7 @@ This project uses Turborepo for managing a monorepo with the following packages 
 ### Prerequisites
 
 - Node.js (v22 or later)
-- npm (v10 or later)
+- yarn (v4 or later)
 - Docker and Docker Compose (for local development)
 
 ### Installation
@@ -39,13 +39,13 @@ cd fraudshield
 2. Install dependencies:
 
 ```bash
-npm install
+yarn install
 ```
 
 3. Build all packages:
 
 ```bash
-npm run build
+yarnbuild
 ```
 
 ### Development
@@ -53,7 +53,7 @@ npm run build
 To start the development environment:
 
 ```bash
-npm run dev
+yarndev
 ```
 
 This will start all services in development mode with hot reloading.
@@ -63,7 +63,7 @@ This will start all services in development mode with hot reloading.
 To run tests across all packages:
 
 ```bash
-npm test
+yarn test
 ```
 
 ## Services
