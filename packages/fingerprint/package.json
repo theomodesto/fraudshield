@@ -1,0 +1,32 @@
+{
+  "name": "@fraudshield/fingerprint",
+  "version": "0.0.1",
+  "description": "Device fingerprinting module for FraudShield",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@fraudshield/eslint-config": "*",
+    "@fraudshield/tsconfig": "*",
+    "@types/uuid": "^9.0.6",
+    "@vitest/coverage-v8": "^0.34.6",
+    "eslint": "^8.52.0",
+    "tsup": "^7.2.0",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  }
+}

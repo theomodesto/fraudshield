@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # Redpanda (Kafka-compatible event streaming)
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: fraudshield-redpanda
+    ports:
+      - "9092:9092"
+      - "9644:9644" # Admin
+    environment:
+      - REDPANDA_RPC_SERVER_LISTEN_ADDR=0.0.0.0
+      - REDPANDA_KAFKA_ADDRESS=0.0.0.0
+      - REDPANDA_ADVERTISED_KAFKA_ADDR=localhost:9092,redpanda:9092
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr 0.0.0.0:9092
+      - --advertise-kafka-addr=localhost:9092,redpanda:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr=redpanda:8082
+      - --rpc-addr 0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9644/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redpanda Console (Web UI for Redpanda)
+  redpanda-console:
+    image: redpandadata/console:latest
+    container_name: fraudshield-redpanda-console
+    ports:
+      - "8081:8080"
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+      - CONNECT_ENABLED=false
+      - CONSOLE_SERVER_LISTEN_ADDR=0.0.0.0:8080
+    depends_on:
+      - redpanda
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: fraudshield-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (S3-compatible storage for GeoIP database)
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+
+  # Postgres database
+  postgres:
+    image: postgres:15-alpine
+    container_name: fraudshield-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: fraudshield
+      POSTGRES_PASSWORD: fraudshield_password
+      POSTGRES_DB: fraudshield
+      POSTGRES_SCHEMA: fraudshield
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraudshield"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Evaluator service (comment out in development)
+  # evaluator:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/evaluator/Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - PORT=3000
+  #     - HOST=0.0.0.0
+  #     - NODE_ENV=development
+  #     - KAFKA_BROKERS=redpanda:9092
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - GEOIP_DB_PATH=/app/data/GeoLite2-City.mmdb
+  #   volumes:
+  #     - ./data:/app/data
+  #   depends_on:
+  #     - redpanda
+  #     - redis
+  #     - postgres
+
+volumes:
+  redpanda_data:
+  redis_data:
+  minio_data:
+  postgres_data: 

@@ -1,0 +1,139 @@
+classDiagram
+    class FraudShieldSDK {
+        -string merchantId
+        -string sessionId
+        -FingerprintClient fingerprintClient
+        -HCaptchaClient captchaClient
+        +constructor(config: SDKConfig)
+        +init(merchantId: string): void
+        +evaluate(context: PageContext): Promise~EvaluationResult~
+        -collectDeviceData(): Promise~DeviceData~
+        -handleCaptchaChallenge(requiresCaptcha: boolean): Promise~CaptchaResult~
+        -sendEvaluationRequest(payload: EvaluationPayload): Promise~EvaluationResult~
+    }
+    
+    class FingerprintClient {
+        -FingerprintOptions options
+        -Storage storage
+        -Logger logger
+        +constructor(options: FingerprintOptions)
+        +collectData(): Promise~DeviceData~
+        -generateFingerprint(): Promise~DeviceData~
+        -getCanvasFingerprint(): Promise~string~
+        -getWebGLData(): any
+        -detectFonts(): Promise~string[]~
+        -getAudioFingerprint(): Promise~any~
+        -hashString(str: string): string
+    }
+    
+    class SDKConfig {
+        +string merchantId
+        +string apiEndpoint
+        +boolean enableCaptcha
+        +number captchaThreshold
+        +function onEvaluation
+    }
+    
+    class EvaluationPayload {
+        +string sessionId
+        +string merchantId
+        +DeviceData fingerprintData
+        +PageData pageData
+        +string userAction
+        +number timestamp
+    }
+    
+    class EvaluationResult {
+        +number riskScore
+        +boolean isFraud
+        +string evaluationId
+        +boolean requiresCaptcha
+        +string captchaSiteKey
+    }
+    
+    class EvaluationService {
+        -RiskEngine riskEngine
+        -ThirdPartyIntegrations integrations
+        -EventProducer eventProducer
+        +constructor(config: ServiceConfig)
+        +evaluate(payload: EvaluationPayload): Promise~EvaluationResult~
+        +handleWebhook(data: WebhookData): Promise~void~
+        -enrichData(payload: EvaluationPayload): Promise~EnrichedData~
+        -publishEvent(event: Event): Promise~void~
+    }
+    
+    class FingerprintService {
+        -RedisClient redisCache
+        -number cacheTtl
+        +constructor(options: FingerprintOptions)
+        +verify(fingerprintData: any): Promise~any~
+        -generateRequestId(): string
+        -calculateConfidence(browserDetails: any): number
+        -hasInconsistentSignals(browserDetails: any): boolean
+        -cacheFingerprint(visitorId: string, data: any): Promise~void~
+        -getCachedFingerprint(visitorId: string): Promise~any~
+    }
+    
+    class RiskEngine {
+        -RuleEngine ruleEngine
+        -VelocityChecker velocityChecker
+        -MlModel mlModel
+        +constructor(options: RiskEngineOptions)
+        +calculateRiskScore(event: EnrichedEvent): Promise~RiskScore~
+    }
+    
+    class RuleEngine {
+        -Rule[] rules
+        +constructor(rules: Rule[])
+        +evaluateRules(event: EnrichedEvent): RuleResult
+        -evaluateCondition(condition: Condition, event: EnrichedEvent): boolean
+    }
+    
+    class VelocityChecker {
+        -RedisClient redis
+        +constructor(redis: RedisClient)
+        +check(event: EnrichedEvent): Promise~VelocityResult~
+    }
+    
+    class RedisClient {
+        -RedisClientOptions options
+        +constructor(options: RedisClientOptions)
+        +get(key: string): Promise~string~
+        +set(key: string, value: string): Promise~void~
+        +incr(key: string): Promise~number~
+        +expire(key: string, seconds: number): Promise~void~
+    }
+    
+    class GeoIpService {
+        -string apiKey
+        -boolean cacheEnabled
+        -RedisClient redis
+        +constructor(options: GeoIpOptions)
+        +lookup(ip: string): Promise~GeoData~
+        -getCachedGeoData(ip: string): Promise~GeoData~
+        -cacheGeoData(ip: string, data: GeoData): Promise~void~
+    }
+    
+    class DataEnricher {
+        -GeoIpService geoIpService
+        -RedisClient redis
+        -boolean ipAnonymization
+        +constructor(options: EnricherOptions)
+        +enrichEvent(event: RawEvent): Promise~EnrichedEvent~
+        -extractIp(event: RawEvent): string
+        -anonymizeIp(ip: string): string
+        -getVelocityData(event: RawEvent): Promise~VelocityData~
+    }
+    
+    FraudShieldSDK --> FingerprintClient
+    FraudShieldSDK ..> EvaluationPayload
+    FraudShieldSDK ..> EvaluationResult
+    EvaluationService --> RiskEngine
+    EvaluationService --> FingerprintService
+    EvaluationService --> GeoIpService
+    RiskEngine --> RuleEngine
+    RiskEngine --> VelocityChecker
+    DataEnricher --> GeoIpService
+    DataEnricher --> RedisClient
+    FingerprintService --> RedisClient
+    GeoIpService --> RedisClient

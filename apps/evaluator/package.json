@@ -1,0 +1,46 @@
+{
+  "name": "@fraudshield/evaluator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FraudShield Evaluator Service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "migrate:up": "npx kysely-ctl migrate:up",
+    "migrate:latest": "npx kysely-ctl migrate:latest",
+    "migrate:down": "npx kysely-ctl migrate:down",
+    "migrate:make": "npx kysely-ctl migrate:make",
+    "migrate:list": "npx kysely-ctl migrate:list",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@fastify/rate-limit": "^10.3.0",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "fastify": "^5.3.3",
+    "fastify-plugin": "^5.0.1",
+    "ioredis": "^5.6.1",
+    "kysely": "^0.28.2",
+    "kysely-ctl": "^0.13.0",
+    "maxmind": "^4.3.25",
+    "node-rdkafka": "^3.4.0",
+    "pg": "^8.16.0",
+    "pino": "^9.7.0",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.17"
+  },
+  "devDependencies": {
+    "@fraudshield/eslint-config": "*",
+    "@fraudshield/tsconfig": "*",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.2",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^8.52.0",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,102 @@
+sequenceDiagram
+    participant Client as Merchant Website
+    participant SDK as FraudShield SDK
+    participant FPS as Custom Fingerprint Service
+    participant HC as hCaptcha
+    participant API as API Gateway
+    participant Eval as Evaluator Service
+    participant RP1 as Redpanda (raw_events)
+    participant RP2 as Redpanda (risk_scores)
+    participant Dec as Decisioner Service
+    participant Redis as Redis Cache
+    participant DB as PostgreSQL
+    participant Plugin as E-commerce Plugin
+    participant Dashboard as Merchant Dashboard
+
+    %% Transaction Evaluation Flow
+    Client->>SDK: User begins checkout
+    SDK->>FPS: collectDeviceData()
+    FPS-->>SDK: Return fingerprintData
+    SDK->>API: POST /api/v1/evaluate (payload)
+    API->>Eval: Forward request
+    
+    Eval->>Redis: Check visitor history
+    Redis-->>Eval: Return cached history
+    Eval->>RP1: Publish raw_event
+    
+    Eval->>Eval: enrichData() (GeoIP, etc.)
+    Eval->>Eval: calculateRiskScore()
+    
+    alt Risk score > captcha threshold
+        Eval-->>SDK: Return requiresCaptcha=true
+        SDK->>HC: Execute hCaptcha challenge
+        HC-->>SDK: Challenge result
+        SDK->>API: Submit challenge result
+        API->>Eval: Forward challenge result
+    end
+    
+    Eval->>RP2: Publish risk_score event
+    Eval-->>SDK: Return evaluation result
+    
+    %% Decision Service Flow
+    RP2->>Dec: Consume risk_score event
+    Dec->>Redis: Cache risk score
+    Dec->>DB: Store transaction
+    
+    %% Order Processing Flow
+    Plugin->>Client: Order created
+    Plugin->>API: GET /api/v1/decision/:orderId
+    API->>Dec: Forward request
+    Dec->>Redis: Check cached risk score
+    Redis-->>Dec: Return risk score
+    
+    alt Cache miss
+        Dec->>DB: Query transaction
+        DB-->>Dec: Return transaction
+    end
+    
+    Dec->>Dec: Apply merchant rules
+    Dec-->>Plugin: Return decision
+    
+    alt Decision is 'reject'
+        Plugin->>Plugin: Cancel order
+    else Decision is 'review'
+        Plugin->>Plugin: Flag order for review
+    end
+    
+    %% Dashboard Flow
+    Dashboard->>API: GET /api/v1/analytics/summary
+    API->>DB: Query transaction stats
+    DB-->>API: Return stats data
+    API-->>Dashboard: Return analytics
+    
+    Dashboard->>API: GET /api/v1/transactions (filtered)
+    API->>DB: Query transactions
+    DB-->>API: Return transactions
+    API-->>Dashboard: Return transaction list
+    
+    %% Rule Configuration Flow
+    Dashboard->>API: PUT /api/v1/rules/:id
+    API->>DB: Update rule
+    DB-->>API: Confirm update
+    API->>Redis: Invalidate cached settings
+    API-->>Dashboard: Confirm rule updated
+    
+    %% Merchant Settings Update Flow
+    Dashboard->>API: PUT /api/v1/config
+    API->>DB: Update merchant settings
+    DB-->>API: Confirm update
+    API->>Redis: Update cached settings
+    Redis-->>API: Confirm cache update
+    API-->>Dashboard: Confirm settings updated
+    
+    %% System Initialization Flow
+    Note over Client,Dashboard: System Initialization
+    Plugin->>Client: Inject SDK script
+    SDK->>SDK: init(merchantId)
+    
+    %% Transaction Lookup Flow
+    Dashboard->>API: GET /api/v1/transactions/:id
+    API->>DB: Query transaction details
+    DB-->>API: Return transaction
+    API-->>Dashboard: Return transaction details
